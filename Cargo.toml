@@ -19,6 +19,11 @@ edition = "2018"
 embedded-graphics = { version = "0.6.2", optional = true}
 embedded-hal = {version = "0.2.4", features = ["unproven"]}
 bit_field = "0.10.1"
+defmt = "0.2.0"
+defmt-rtt = "0.2.0"
+panic-probe = { version = "0.2.0", features = ["print-defmt"] }
+tinybmp = { version = "*", features = ["graphics"]}
+
 
 [dev-dependencies]
 linux-embedded-hal = "0.3"

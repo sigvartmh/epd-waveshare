@@ -1,14 +1,17 @@
 //! B/W Color for EPDs
-
 #[cfg(feature = "graphics")]
 use embedded_graphics::pixelcolor::BinaryColor;
 #[cfg(feature = "graphics")]
 use embedded_graphics::pixelcolor::PixelColor;
 
+use defmt_rtt as _; // global logger
+
 #[cfg(feature = "graphics")]
 pub use BinaryColor::Off as White;
 #[cfg(feature = "graphics")]
 pub use BinaryColor::On as Black;
+
+use tinybmp::Pixel;
 
 /// When trying to parse u8 to one of the color types
 #[derive(Debug, PartialEq, Eq)]
@@ -68,9 +71,35 @@ pub enum OctColor {
 
 impl From<()> for OctColor {
     fn from(_: ()) -> OctColor {
-        OctColor::White
+        defmt::info!("Default from");
+        OctColor::Yellow
     }
 }
+impl From<Pixel> for OctColor {
+    fn from(value: Pixel) -> Self {
+        OctColor::from_u32(value.color)
+    }
+}
+/*
+impl From<PixelColor::Raw> for OctColor {
+    fn from(value: PixelColor::Raw) -> Self {
+        OctColor::from_u32(value.into(u32))
+    }
+}
+*/
+
+impl From<u32> for OctColor {
+    fn from(value: u32) -> Self {
+        OctColor::from_u32(value)
+    }
+}
+
+impl From<u8> for OctColor {
+    fn from(value: u8) -> Self {
+        OctColor::from_u8(value)
+    }
+}
+
 
 #[cfg(feature = "graphics")]
 impl PixelColor for OctColor {
@@ -80,15 +109,18 @@ impl PixelColor for OctColor {
 impl OctColor {
     /// Gets the Nibble representation of the Color as needed by the display
     pub fn get_nibble(self) -> u8 {
+        defmt::info!("get_nibble");
         self as u8
     }
     /// Converts two colors into a single byte for the Display
     pub fn colors_byte(a: OctColor, b: OctColor) -> u8 {
+        defmt::info!("Color bytes");
         a.get_nibble() << 4 | b.get_nibble()
     }
 
     ///Take the nibble (lower 4 bits) and convert to an OctColor if possible
     pub fn from_nibble(nibble: u8) -> Result<OctColor, OutOfColorRangeParseError> {
+        defmt::info!("color from nibble");
         match nibble & 0xf {
             0x00 => Ok(OctColor::Black),
             0x01 => Ok(OctColor::White),
@@ -103,12 +135,14 @@ impl OctColor {
     }
     ///Split the nibbles of a single byte and convert both to an OctColor if possible
     pub fn split_byte(byte: u8) -> Result<(OctColor, OctColor), OutOfColorRangeParseError> {
+        defmt::info!("Split nibble to color");
         let low = OctColor::from_nibble(byte & 0xf)?;
         let high = OctColor::from_nibble((byte >> 4) & 0xf)?;
         Ok((high, low))
     }
     /// Converts to limited range of RGB values.
     pub fn rgb(self) -> (u8, u8, u8) {
+        defmt::info!("Convert RGB");
         match self {
             OctColor::White => (0xff, 0xff, 0xff),
             OctColor::Black => (0x00, 0x00, 0x00),
@@ -118,6 +152,29 @@ impl OctColor {
             OctColor::Yellow => (0xff, 0xff, 0x00),
             OctColor::Orange => (0xff, 0x80, 0x00),
             OctColor::HiZ => (0x80, 0x80, 0x80), /* looks greyish */
+        }
+    }
+
+    fn from_u8(val: u8) -> Self {
+        match val {
+            0 => OctColor::Black,
+            1 => OctColor::White,
+            e => panic!(
+                "DisplayColor only parses 0 and 1 (Black and White) and not `{}`",
+                e
+            ),
+        }
+    }
+
+
+    fn from_u32(val: u32) -> Self {
+        match val {
+            0 => OctColor::Black,
+            1 => OctColor::White,
+            e => panic!(
+                "DisplayColor only parses 0 and 1 (Black and White) and not `{}`",
+                e
+            ),
         }
     }
 }
