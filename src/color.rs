@@ -3,6 +3,8 @@
 use embedded_graphics::pixelcolor::BinaryColor;
 #[cfg(feature = "graphics")]
 use embedded_graphics::pixelcolor::PixelColor;
+use embedded_graphics::pixelcolor::raw::{RawData, RawU8};
+use embedded_graphics::pixelcolor::Rgb565;
 
 use defmt_rtt as _; // global logger
 
@@ -71,7 +73,6 @@ pub enum OctColor {
 
 impl From<()> for OctColor {
     fn from(_: ()) -> OctColor {
-        defmt::info!("Default from");
         OctColor::Yellow
     }
 }
@@ -80,17 +81,16 @@ impl From<Pixel> for OctColor {
         OctColor::from_u32(value.color)
     }
 }
-/*
-impl From<PixelColor::Raw> for OctColor {
-    fn from(value: PixelColor::Raw) -> Self {
-        OctColor::from_u32(value.into(u32))
-    }
-}
-*/
 
 impl From<u32> for OctColor {
     fn from(value: u32) -> Self {
         OctColor::from_u32(value)
+    }
+}
+
+impl From<RawU8> for OctColor {
+    fn from(value: RawU8) -> Self {
+        OctColor::from_u8(RawData::into_inner(value))
     }
 }
 
@@ -103,18 +103,15 @@ impl From<u8> for OctColor {
 
 #[cfg(feature = "graphics")]
 impl PixelColor for OctColor {
-    type Raw = ();
+    type Raw = RawU8;
 }
-
 impl OctColor {
     /// Gets the Nibble representation of the Color as needed by the display
     pub fn get_nibble(self) -> u8 {
-        defmt::info!("get_nibble");
         self as u8
     }
     /// Converts two colors into a single byte for the Display
     pub fn colors_byte(a: OctColor, b: OctColor) -> u8 {
-        defmt::info!("Color bytes");
         a.get_nibble() << 4 | b.get_nibble()
     }
 
@@ -154,11 +151,18 @@ impl OctColor {
             OctColor::HiZ => (0x80, 0x80, 0x80), /* looks greyish */
         }
     }
-
     fn from_u8(val: u8) -> Self {
+        static mut dither: u8 = 0;
         match val {
             0 => OctColor::Black,
-            1 => OctColor::White,
+            1 => unsafe {if dither == 3 
+                { 
+                    dither = 0;
+                    return OctColor::Orange } 
+                else { 
+                    dither += 1;
+                    return OctColor::Red
+                }},
             e => panic!(
                 "DisplayColor only parses 0 and 1 (Black and White) and not `{}`",
                 e
